@@ -7,7 +7,7 @@ import "fmt"
 func fibonacci() func() int {
 	ex, now := -1, 1
 	return func() int {
-		now, ex = now + ex, now
+		now, ex = now+ex, now
 		return now
 	}
 }
