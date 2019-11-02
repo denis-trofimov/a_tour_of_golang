@@ -12,14 +12,15 @@ type Fetcher interface {
 }
 
 type safeMap struct {
-	urls map[string]bool
-	mux sync.Mutex
+	urls map[string]struct{}
+	mux  sync.Mutex
 }
 
 func (s safeMap) isExist(url string) (exist bool) {
 	if _, exist = s.urls[url]; !exist {
 		s.mux.Lock()
-		s.urls[url]=true
+		var empty struct{}
+		s.urls[url] = empty
 		s.mux.Unlock()
 	}
 	return exist
@@ -52,7 +53,7 @@ func Crawl(url string, depth int, fetcher Fetcher) {
 }
 
 func main() {
-	visited.urls = make(map[string]bool)
+	visited.urls = make(map[string]struct{})
 	wg.Add(1)
 	Crawl("https://golang.org/", 4, fetcher)
 	wg.Wait()
