@@ -13,7 +13,16 @@ type Fetcher interface {
 
 type safeMap struct {
 	urls map[string]bool
-	mux  sync.Mutex
+	mux sync.Mutex
+}
+
+func (s safeMap) isExist(url string) (exist bool) {
+	if _, exist = s.urls[url]; !exist {
+		s.mux.Lock()
+		s.urls[url]=true
+		s.mux.Unlock()
+	}
+	return exist
 }
 
 var wg sync.WaitGroup
@@ -22,17 +31,10 @@ var visited safeMap
 // Crawl uses fetcher to recursively crawl
 // pages starting with url, to a maximum of depth.
 func Crawl(url string, depth int, fetcher Fetcher) {
-	// TODO: Fetch URLs in parallel.
-	// TODO: Don't fetch the same URL twice.
-	// This implementation doesn't do either:
 	defer wg.Done()
 	if depth <= 0 {
 		return
 	}
-
-	visited.mux.Lock()
-	visited.urls[url] = true
-	visited.mux.Unlock()
 
 	body, urls, err := fetcher.Fetch(url)
 	if err != nil {
@@ -41,7 +43,7 @@ func Crawl(url string, depth int, fetcher Fetcher) {
 	}
 	fmt.Printf("found: %s %q\n", url, body)
 	for _, u := range urls {
-		if !visited.urls[u] {
+		if exist := visited.isExist(u); !exist {
 			wg.Add(1)
 			go Crawl(u, depth-1, fetcher)
 		}
