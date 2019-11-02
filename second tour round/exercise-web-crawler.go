@@ -16,6 +16,7 @@ type safeMap struct {
 	mux  sync.Mutex
 }
 
+var wg sync.WaitGroup
 var visited safeMap
 
 // Crawl uses fetcher to recursively crawl
@@ -24,6 +25,7 @@ func Crawl(url string, depth int, fetcher Fetcher) {
 	// TODO: Fetch URLs in parallel.
 	// TODO: Don't fetch the same URL twice.
 	// This implementation doesn't do either:
+	defer wg.Done()
 	if depth <= 0 {
 		return
 	}
@@ -40,7 +42,8 @@ func Crawl(url string, depth int, fetcher Fetcher) {
 	fmt.Printf("found: %s %q\n", url, body)
 	for _, u := range urls {
 		if !visited.urls[u] {
-			defer Crawl(u, depth-1, fetcher)
+			wg.Add(1)
+			go Crawl(u, depth-1, fetcher)
 		}
 	}
 	return
@@ -48,8 +51,9 @@ func Crawl(url string, depth int, fetcher Fetcher) {
 
 func main() {
 	visited.urls = make(map[string]bool)
+	wg.Add(1)
 	Crawl("https://golang.org/", 4, fetcher)
-	fmt.Println(visited)
+	wg.Wait()
 }
 
 // fakeFetcher is Fetcher that returns canned results.
